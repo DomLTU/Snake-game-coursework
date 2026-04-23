@@ -1,8 +1,6 @@
 # Snake-game-coursework
 Snake game for my university oop coursework
 
-## 1. Introduction
-
 **What is this application?**
 This project is an object-oriented implementation of the classic arcade game "Snake". The application is built using Python's built-in `tkinter` library for the graphical user interface. The primary goal of this project was to take a functional, procedural game script and completely refactor it to strictly adhere to Object-Oriented Programming (OOP) principles, design patterns, and best practices.
 
