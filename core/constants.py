@@ -17,8 +17,10 @@ COLORS = {
     "score_bg": "#16213e",
     "text": "#e0e0e0",
     "accent": "#00d4aa",
+    "god_glow": "#ffcc00",
     "danger": "#ff6b6b",
     "border": "#0f3460",
+
 }
 
 DIRS = {

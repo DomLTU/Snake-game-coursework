@@ -150,21 +150,24 @@ class SnakeApp(tk.Tk):
         if key == "Escape":
             self._exit_cheat_mode()
             return
-        
-        key_map = {
-            "Up": "up", "Down": "down", "Left": "left", "Right": "right",
-            "w": "up", "s": "down", "a": "left", "d": "right",
-            "a": "a", "b": "b", "Return": "return", "p": "p", "r": "r", "q": "q"
-        }
-        
-        if key in key_map:
-            cheat_key = key_map[key]
-        elif len(key) == 1 and key.isalnum():
+
+        # Handle arrow keys as directions
+        if key in ("Up", "Down", "Left", "Right"):
             cheat_key = key.lower()
+        # Handle WASD as LETTERS, not directions (preserve 'd', 'a', 's', 'w' for cheat codes)
+        elif key.lower() in ("w", "a", "s", "d", "i", "q", "k", "f", "b"):
+            cheat_key = key.lower()
+        elif len(key) == 1 and key.isalpha():
+            # Any other letter
+            cheat_key = key.lower()
+        elif key == "Return":
+            cheat_key = "return"
         else:
             return
+
         self._cheat_buffer += cheat_key
 
+        # 3. Check for successful codes
         if "iddqd" in self._cheat_buffer:
             self._activate_godmode()
             return
@@ -172,9 +175,10 @@ class SnakeApp(tk.Tk):
             self._fill_map_with_apples()
             return
         if "upupdowndownleftrightleftrightab" in self._cheat_buffer:
-            self._purple_snake()
+            self._purple_snake_cheat() # Renamed to avoid collision with the bool attribute
             return
 
+        # Update UI feedback
         masked = "*" * len(self._cheat_buffer)
         self._overlay("CHEAT MODE", f"Code: {masked}", "Press ESC to cancel")
 
@@ -196,8 +200,8 @@ class SnakeApp(tk.Tk):
         self._overlay("CHEAT ACTIVATED", "MAP FILLED WITH APPLES", "Resuming in 1 second...")
         self.after(1000, self._exit_cheat_mode)
 
-    def _purple_snake(self):
-        self._purple_snake = True
+    def _purple_snake_cheat(self):
+        self._purple_snake = True # This sets the boolean flag
         self._overlay("CHEAT ACTIVATED", "SNAKE IS NOW PURPLE", "Resuming in 1 second...")
         self.after(1000, self._exit_cheat_mode)
 
@@ -298,6 +302,7 @@ class SnakeApp(tk.Tk):
     def _draw(self):
         self._draw_grid()
         g = self.game
+        snake_pos = g.snake.get_positions()
 
         # Draw Food
         for food in g.foods:
@@ -309,14 +314,25 @@ class SnakeApp(tk.Tk):
             self.canvas.create_oval(x1 + 2, y1 + 2, x2 - 2, y2 - 2,
                                     fill=COLORS["food"], outline="", tags="food")
 
-        # Draw Snake
-        for i, (sx, sy) in enumerate(g.snake.get_positions()):
+        # ── NEW: Draw Godmode Glow ──
+        # We draw this BEFORE the snake so the glow stays behind the body segments
+        if self._godmode:
+            for sx, sy in snake_pos:
+                x1, y1 = sx * CELL - 3, sy * CELL - 3
+                x2, y2 = x1 + CELL + 6, y1 + CELL + 6
+                # Using a larger oval to create a "halo" effect
+                self.canvas.create_oval(x1, y1, x2, y2, fill=COLORS["god_glow"], outline="")
+
+        # Draw Snake segments
+        for i, (sx, sy) in enumerate(snake_pos):
             x1, y1 = sx * CELL + 1, sy * CELL + 1
             x2, y2 = x1 + CELL - 2, y1 + CELL - 2
+            
             if self._purple_snake:
-                color = "#800080" if i == 0 else "#9932CC"  # Purple colors
+                color = "#800080" if i == 0 else "#9932CC"
             else:
                 color = COLORS["snake_head"] if i == 0 else COLORS["snake_body"]
+                
             r = 6 if i == 0 else 4
             self._rounded_rect(x1, y1, x2, y2, r, color)
 
