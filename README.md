@@ -24,6 +24,6 @@ Once the application launches, you will be greeted by the main menu.
 3. Pause: Press P to pause or resume the game.
 4. Cheat pause: Press X to enter cheat menu.
 5. Restart: Press R after a game over to restart.
-6. Quit: Press Q to exit the application.
+6. Quit: Double press Q to exit the application.
 
 Objective: Eat the red food to grow your snake and increase your score. Avoid colliding with the walls or your own tail.
