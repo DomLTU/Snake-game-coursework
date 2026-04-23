@@ -24,7 +24,7 @@ Once the application launches, you will be greeted by the main menu.
 Start/Play: Press ENTER.
 Controls: Use the Arrow Keys or W, A, S, D to change the snake's direction.
 Pause: Press P to pause or resume the game.
-^Cheat pause: Press X to enter cheat menu.^
+Cheat pause: Press X to enter cheat menu.
 Restart: Press R after a game over to restart.
 Quit: Press Q to exit the application.
 
