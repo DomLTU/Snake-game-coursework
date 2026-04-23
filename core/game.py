@@ -15,7 +15,7 @@ class SnakeGame:
 
     def reset(self):
         self.snake = Snake((COLS // 2, ROWS // 2))
-        self.food = FoodFactory.spawn_food(self.snake.get_positions())
+        self.foods = [FoodFactory.spawn_food(self.snake.get_positions())]
         self.next_dir = "Right"
         self.score = 0
         self.alive = True
@@ -25,8 +25,8 @@ class SnakeGame:
         if d != OPPOSITE.get(self.snake.direction):
             self.next_dir = d
 
-    def step(self):
-        if not self.alive:
+    def step(self, invincible=False):
+        if not self.alive and not invincible:
             return
 
         self.snake.direction = self.next_dir
@@ -36,16 +36,24 @@ class SnakeGame:
 
         # Wall collision
         if not (0 <= new_head[0] < COLS and 0 <= new_head[1] < ROWS):
-            self.alive = False
-            return
+            if not invincible:
+                self.alive = False
+                return
 
         # Self collision
         if new_head in self.snake.get_positions()[:-1]:
-            self.alive = False
-            return
+            if not invincible:
+                self.alive = False
+                return
 
         # Check if eating food
-        self.grew = new_head == self.food.position
+        self.grew = False
+        eaten_food_indices = []
+        for i, food in enumerate(self.foods):
+            if new_head == food.position:
+                self.grew = True
+                eaten_food_indices.append(i)
+                break
 
         # Move snake
         self.snake.move(dx, dy, self.grew)
@@ -53,4 +61,9 @@ class SnakeGame:
         if self.grew:
             self.score += 10
             self.score_manager.high_score = self.score
-            self.food = FoodFactory.spawn_food(self.snake.get_positions())
+            # Remove eaten food
+            for i in reversed(eaten_food_indices):
+                self.foods.pop(i)
+            # Spawn new food if no foods left
+            if not self.foods:
+                self.foods = [FoodFactory.spawn_food(self.snake.get_positions())]

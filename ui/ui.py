@@ -16,6 +16,13 @@ class SnakeApp(tk.Tk):
         self._after_id = None
         self._paused = False
         self._state = "menu"
+        
+        # Cheat code attributes
+        self._godmode = False
+        self._cheat_buffer = ""
+        self._purple_snake = False
+        self._quit_confirm = False
+        self._prev_state = None
 
         self._build_ui()
         self._bind_keys()
@@ -70,16 +77,8 @@ class SnakeApp(tk.Tk):
         self.hint_lbl.pack()
 
     def _bind_keys(self):
-        for key, d in [("<Up>", "Up"), ("<Down>", "Down"), ("<Left>", "Left"), ("<Right>", "Right"),
-                       ("w", "Up"), ("s", "Down"), ("a", "Left"), ("d", "Right")]:
-            self.bind(key, lambda _e, d=d: self._on_dir(d))
-        self.bind("<Return>", lambda _e: self._on_enter())
-        self.bind("p", lambda _e: self._toggle_pause())
-        self.bind("P", lambda _e: self._toggle_pause())
-        self.bind("r", lambda _e: self._restart())
-        self.bind("R", lambda _e: self._restart())
-        self.bind("q", lambda _e: self.quit())
-        self.bind("Q", lambda _e: self.quit())
+        # Use a single generic key handler to avoid duplicate event processing in cheat mode.
+        self.bind("<Key>", self._on_key_press)
 
     # ── State Transitions ──────────────────────────────────────────────────────
 
@@ -92,6 +91,9 @@ class SnakeApp(tk.Tk):
         self._overlay("SNAKE", body, footer)
 
     def _on_enter(self):
+        if self._state == "cheat_mode":
+            self._process_cheat_key("Return")
+            return "break"
         if self._state in ("menu", "game_over"):
             self._start_game()
         elif self._state == "paused":
@@ -105,10 +107,16 @@ class SnakeApp(tk.Tk):
         self._loop()
 
     def _restart(self):
+        if self._state == "cheat_mode":
+            self._process_cheat_key("r")
+            return "break"
         self._cancel_loop()
         self._start_game()
 
     def _toggle_pause(self):
+        if self._state == "cheat_mode":
+            self._process_cheat_key("p")
+            return "break"
         if self._state not in ("playing", "paused"):
             return
         self._paused = not self._paused
@@ -126,13 +134,89 @@ class SnakeApp(tk.Tk):
         msg = f"Score: {self.game.score}"
         self._overlay("GAME OVER", msg, "Press ENTER or R to restart")
 
+    def _enter_cheat_mode(self):
+        if self._state not in ("playing", "paused"):
+            return
+        self._prev_state = self._state
+        self._state = "cheat_mode"
+        self._cancel_loop()
+        self._cheat_buffer = ""
+        self._overlay("CHEAT MODE", "Enter cheat code using arrows/WASD + letters:", "Press ESC to cancel")
+
+    def _process_cheat_key(self, key):
+        if self._state != "cheat_mode":
+            return
+        
+        if key == "Escape":
+            self._exit_cheat_mode()
+            return
+        
+        key_map = {
+            "Up": "up", "Down": "down", "Left": "left", "Right": "right",
+            "w": "up", "s": "down", "a": "left", "d": "right",
+            "a": "a", "b": "b", "Return": "return", "p": "p", "r": "r", "q": "q"
+        }
+        
+        if key in key_map:
+            cheat_key = key_map[key]
+        elif len(key) == 1 and key.isalnum():
+            cheat_key = key.lower()
+        else:
+            return
+        self._cheat_buffer += cheat_key
+
+        if "iddqd" in self._cheat_buffer:
+            self._activate_godmode()
+            return
+        if "idkfa" in self._cheat_buffer:
+            self._fill_map_with_apples()
+            return
+        if "upupdowndownleftrightleftrightab" in self._cheat_buffer:
+            self._purple_snake()
+            return
+
+        masked = "*" * len(self._cheat_buffer)
+        self._overlay("CHEAT MODE", f"Code: {masked}", "Press ESC to cancel")
+
+    def _activate_godmode(self):
+        self._godmode = True
+        self._overlay("CHEAT ACTIVATED", "GODMODE ENABLED", "Resuming in 1 second...")
+        self.after(1000, self._exit_cheat_mode)
+
+    def _fill_map_with_apples(self):
+        occupied = set(self.game.snake.get_positions())
+        for food in self.game.foods:
+            occupied.add(food.position)
+        
+        from core.entities import FoodFactory
+        for _ in range(20):  # Spawn 20 apples
+            food = FoodFactory.spawn_food(occupied)
+            self.game.foods.append(food)
+            occupied.add(food.position)
+        self._overlay("CHEAT ACTIVATED", "MAP FILLED WITH APPLES", "Resuming in 1 second...")
+        self.after(1000, self._exit_cheat_mode)
+
+    def _purple_snake(self):
+        self._purple_snake = True
+        self._overlay("CHEAT ACTIVATED", "SNAKE IS NOW PURPLE", "Resuming in 1 second...")
+        self.after(1000, self._exit_cheat_mode)
+
+    def _exit_cheat_mode(self):
+        if self._prev_state == "paused":
+            self._state = "paused"
+            self._overlay("PAUSED", "", "Press P or ENTER to resume")
+        else:
+            self._state = "playing"
+            self._loop()
+        self._prev_state = None
+
     # ── Game Loop ──────────────────────────────────────────────────────────────
 
     def _loop(self):
-        self.game.step()
+        self.game.step(invincible=self._godmode)
         self._draw()
         self._update_scoreboard()
-        if not self.game.alive:
+        if not self.game.alive and not self._godmode:
             self._game_over()
             return
         delay = SPEEDS[self.speed_var.get()]
@@ -144,8 +228,63 @@ class SnakeApp(tk.Tk):
             self._after_id = None
 
     def _on_dir(self, d):
+        if self._state == "cheat_mode":
+            self._process_cheat_key(d)
+            return "break"
         if self._state == "playing":
             self.game.set_direction(d)
+
+    def _on_key_press(self, event):
+        if self._state == "cheat_mode":
+            self._process_cheat_key(event.keysym)
+            return "break"
+        
+        key = event.keysym
+        if key in ("Up", "Down", "Left", "Right"):
+            self._on_dir(key)
+            return "break"
+        if key.lower() == "w":
+            self._on_dir("Up")
+            return "break"
+        if key.lower() == "s":
+            self._on_dir("Down")
+            return "break"
+        if key.lower() == "a":
+            self._on_dir("Left")
+            return "break"
+        if key.lower() == "d":
+            self._on_dir("Right")
+            return "break"
+        if key == "Return":
+            self._on_enter()
+            return "break"
+        if key.lower() == "p":
+            self._toggle_pause()
+            return "break"
+        if key.lower() == "r":
+            self._restart()
+            return "break"
+        if key.lower() == "q":
+            self._handle_quit()
+            return "break"
+        if key.lower() == "x":
+            self._enter_cheat_mode()
+            return "break"
+
+    def _handle_quit(self):
+        if self._state == "cheat_mode":
+            self._process_cheat_key("q")
+            return "break"
+        if self._quit_confirm:
+            self.quit()
+        else:
+            self._quit_confirm = True
+            self.hint_lbl.config(text="Press Q again to confirm quit")
+            self.after(2000, lambda: self._reset_quit_confirm())  # Reset after 2 seconds
+
+    def _reset_quit_confirm(self):
+        self._quit_confirm = False
+        self.hint_lbl.config(text="ENTER – start   P – pause   R – restart   Q – quit")
 
     # ── Drawing ────────────────────────────────────────────────────────────────
 
@@ -161,19 +300,23 @@ class SnakeApp(tk.Tk):
         g = self.game
 
         # Draw Food
-        fx, fy = g.food.position
-        x1, y1 = fx * CELL, fy * CELL
-        x2, y2 = x1 + CELL, y1 + CELL
-        self.canvas.create_oval(x1 - 2, y1 - 2, x2 + 2, y2 + 2,
-                                fill=COLORS["food_glow"], outline="", tags="food")
-        self.canvas.create_oval(x1 + 2, y1 + 2, x2 - 2, y2 - 2,
-                                fill=COLORS["food"], outline="", tags="food")
+        for food in g.foods:
+            fx, fy = food.position
+            x1, y1 = fx * CELL, fy * CELL
+            x2, y2 = x1 + CELL, y1 + CELL
+            self.canvas.create_oval(x1 - 2, y1 - 2, x2 + 2, y2 + 2,
+                                    fill=COLORS["food_glow"], outline="", tags="food")
+            self.canvas.create_oval(x1 + 2, y1 + 2, x2 - 2, y2 - 2,
+                                    fill=COLORS["food"], outline="", tags="food")
 
         # Draw Snake
         for i, (sx, sy) in enumerate(g.snake.get_positions()):
             x1, y1 = sx * CELL + 1, sy * CELL + 1
             x2, y2 = x1 + CELL - 2, y1 + CELL - 2
-            color = COLORS["snake_head"] if i == 0 else COLORS["snake_body"]
+            if self._purple_snake:
+                color = "#800080" if i == 0 else "#9932CC"  # Purple colors
+            else:
+                color = COLORS["snake_head"] if i == 0 else COLORS["snake_body"]
             r = 6 if i == 0 else 4
             self._rounded_rect(x1, y1, x2, y2, r, color)
 
