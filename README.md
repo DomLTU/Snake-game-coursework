@@ -21,11 +21,11 @@ This project is an object-oriented implementation of the classic arcade game "Sn
 **How to use the program?**
 Once the application launches, you will be greeted by the main menu.
 
-Start/Play: Press ENTER.
-Controls: Use the Arrow Keys or W, A, S, D to change the snake's direction.
-Pause: Press P to pause or resume the game.
-Cheat pause: Press X to enter cheat menu.
-Restart: Press R after a game over to restart.
-Quit: Press Q to exit the application.
+1. Start/Play: Press ENTER.
+2. Controls: Use the Arrow Keys or W, A, S, D to change the snake's direction.
+3. Pause: Press P to pause or resume the game.
+4. Cheat pause: Press X to enter cheat menu.
+5. Restart: Press R after a game over to restart.
+6. Quit: Press Q to exit the application.
 
 Objective: Eat the red food to grow your snake and increase your score. Avoid colliding with the walls or your own tail.
